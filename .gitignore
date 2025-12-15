@@ -1,0 +1,48 @@
+# ?�존??node_modules/
+**/node_modules/
+
+# ?�경 변??.env
+.env.local
+.env.*.local
+**/.env
+
+# 로그 ?�일
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ?�영체제
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 빌드 결과�?dist/
+dist-ssr
+build/
+*.local
+
+# ?�시 ?�일
+*.tmp
+.cache/
+.tmp.driveupload/
+
+# ?�키지 관리자
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
