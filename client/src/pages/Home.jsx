@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { get } from '../utils/api'
 import './Home.css'
 
 function Home() {
+  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -67,7 +69,11 @@ function Home() {
         ) : (
           <div className="products-grid">
             {products.map((product) => (
-              <div key={product._id || product.id} className="product-card">
+              <div
+                key={product._id || product.id}
+                className="product-card"
+                onClick={() => navigate(`/product/${product._id || product.id}`)}
+              >
                 <div className="product-image-container">
                   <img
                     src={product.image || 'https://via.placeholder.com/400x500?text=Product'}

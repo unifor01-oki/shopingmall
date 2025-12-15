@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useCart } from '../contexts/CartContext'
 import './Navbar.css'
 
 function Navbar() {
   const { user, isAuthenticated, logout } = useAuth()
+  const { getTotalQuantity } = useCart()
   const isAdmin = user?.user_type === 'admin'
+  const cartQuantity = getTotalQuantity()
 
   return (
     <nav className="navbar">
@@ -17,6 +20,12 @@ function Navbar() {
         <Link to="/others" className="nav-link">기타</Link>
       </div>
       <div className="nav-right">
+        <Link to="/cart" className="cart-link">
+          <span className="cart-icon">🛒</span>
+          {cartQuantity > 0 && (
+            <span className="cart-badge">{cartQuantity}</span>
+          )}
+        </Link>
         {isAuthenticated ? (
           <>
             <span className="welcome-message">

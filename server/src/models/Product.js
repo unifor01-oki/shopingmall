@@ -56,6 +56,34 @@ const productSchema = new mongoose.Schema(
         trim: true,
       },
     ],
+    options: [
+      {
+        type: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        label: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        values: [
+          {
+            value: String,
+            label: String,
+            priceAdjustment: {
+              type: Number,
+              default: 0,
+            },
+            stock: {
+              type: Number,
+              default: 0,
+            },
+          },
+        ],
+      },
+    ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
