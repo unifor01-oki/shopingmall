@@ -11,6 +11,12 @@
   z-index: 1000;
 }
 
+/* Admin 레이아웃에서 사이드바 폭(250px)만큼 오른쪽으로 이동 */
+.navbar-admin {
+  margin-left: 250px;
+  width: calc(100% - 250px);
+}
+
 .nav-links {
   display: flex;
   gap: 2rem;
@@ -37,15 +43,64 @@
   gap: 1rem;
 }
 
-.welcome-message {
-  color: #000000;
-  font-size: 0.9rem;
-  font-weight: 400;
+.nav-user-menu {
+  position: relative;
 }
 
-.welcome-message strong {
+.nav-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid #e5e5e5;
+  background-color: #ffffff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #111827;
+}
+
+.nav-user-name strong {
   font-weight: 600;
-  color: #000000;
+}
+
+.nav-dropdown-arrow {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.nav-user-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+  min-width: 150px;
+  padding: 0.4rem 0;
+  z-index: 1000;
+}
+
+.nav-dropdown-item {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: #111827;
+  text-decoration: none;
+  display: block;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-dropdown-item:hover {
+  background-color: #f3f4f6;
+}
+
+.nav-logout-item {
+  color: #b91c1c;
 }
 
 .nav-button {
@@ -133,6 +188,11 @@
     flex-wrap: wrap;
   }
 
+  .navbar.navbar-admin {
+    margin-left: 200px;
+    width: calc(100% - 200px);
+  }
+
   .nav-links {
     gap: 1rem;
     flex-wrap: wrap;
@@ -164,6 +224,11 @@
     gap: 1rem;
   }
 
+  .navbar.navbar-admin {
+    margin-left: 70px;
+    width: calc(100% - 70px);
+  }
+
   .nav-links {
     width: 100%;
     justify-content: space-between;
@@ -171,7 +236,7 @@
 
   .nav-right {
     width: 100%;
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
 }
 

@@ -1,9 +1,411 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LineChart, Line, Area, AreaChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  LineChart,
+  Line,
+  Area,
+  AreaChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
 import { get, post, put, del } from '../utils/api'
+import Navbar from '../components/Navbar'
 import './Admin.css'
+
+// 주문 관리 컴포넌트
+function OrderManagementView() {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [filters, setFilters] = useState({
+    status: '',
+    search: '',
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalOrders, setTotalOrders] = useState(0)
+
+  useEffect(() => {
+    loadOrders()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, currentPage])
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: '10',
+      })
+
+      if (filters.status) params.append('status', filters.status)
+      if (filters.search) params.append('search', filters.search)
+
+      const response = await get(`/api/orders/admin?${params.toString()}`)
+      if (response.success) {
+        setOrders(response.data)
+        setTotalPages(response.pages || 1)
+        setTotalOrders(response.total || 0)
+      } else {
+        setError(response.error || '주문 목록을 불러오는데 실패했습니다.')
+      }
+    } catch (err) {
+      console.error('주문 목록 로드 오류:', err)
+      setError(err.message || '주문 목록을 불러오는 중 오류가 발생했습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getStatusText = (status) => {
+    const statusMap = {
+      pending: '주문 대기',
+      confirmed: '주문 확인',
+      processing: '처리 중',
+      shipped: '배송 중',
+      delivered: '배송 완료',
+      cancelled: '취소됨',
+      refunded: '환불됨',
+    }
+    return statusMap[status] || status
+  }
+
+  const getPaymentStatusText = (status) => {
+    const statusMap = {
+      pending: '결제 대기',
+      completed: '결제 완료',
+      failed: '결제 실패',
+      refunded: '환불됨',
+    }
+    return statusMap[status] || status
+  }
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-'
+    return new Date(dateString).toLocaleString('ko-KR')
+  }
+
+  const getTotalItemCount = (order) => {
+    if (!order.items || order.items.length === 0) return 0
+    return order.items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+  }
+
+  const statusTabs = [
+    { key: 'all', label: '전체' },
+    { key: 'pending', label: '주문 대기' },
+    { key: 'confirmed', label: '주문 확인' },
+    { key: 'processing', label: '처리 중' },
+    { key: 'shipped', label: '배송 중' },
+    { key: 'delivered', label: '배송 완료' },
+    { key: 'cancelled', label: '취소됨' },
+    { key: 'refunded', label: '환불됨' },
+  ]
+
+  const getStatusCount = (key) => {
+    if (key === 'all') return totalOrders
+    return orders.filter((order) => order.status === key).length
+  }
+
+  const handleStatusTabClick = (statusKey) => {
+    setCurrentPage(1)
+    setFilters((prev) => ({
+      ...prev,
+      status: statusKey === 'all' ? '' : statusKey,
+    }))
+  }
+
+  const handleStatusChange = async (order, newStatus) => {
+    if (newStatus === order.status) return
+
+    const confirmMessage = `주문 상태를 "${getStatusText(
+      order.status
+    )}"에서 "${getStatusText(newStatus)}"(으)로 변경하시겠습니까?`
+
+    if (!window.confirm(confirmMessage)) {
+      return
+    }
+
+    let trackingNumber
+    if (newStatus === 'shipped') {
+      trackingNumber = window.prompt('운송장 번호를 입력하세요 (선택 사항):') || undefined
+    }
+
+    try {
+      const body = { status: newStatus }
+      if (trackingNumber) body.trackingNumber = trackingNumber
+
+      const response = await put(`/api/orders/${order._id}/status`, body)
+      if (response.success) {
+        // 목록 갱신
+        await loadOrders()
+      } else {
+        alert(response.error || '주문 상태 변경에 실패했습니다.')
+      }
+    } catch (err) {
+      console.error('주문 상태 변경 오류:', err)
+      alert(err.message || '주문 상태 변경 중 오류가 발생했습니다.')
+    }
+  }
+
+  return (
+    <div className="order-management-page">
+      <div className="order-list-header">
+        <h2 className="section-title">주문 관리</h2>
+      </div>
+
+      {/* 상태 탭 */}
+      <div className="order-status-tabs-admin">
+        {statusTabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={`order-status-tab ${
+              (filters.status || '') === (tab.key === 'all' ? '' : tab.key)
+                ? 'active'
+                : ''
+            }`}
+            onClick={() => handleStatusTabClick(tab.key)}
+          >
+            {tab.label}
+            <span className="order-status-count">{getStatusCount(tab.key)}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* 필터 */}
+      <div className="order-filters">
+        <input
+          type="text"
+          placeholder="주문번호, 고객명, 이메일 검색..."
+          value={filters.search}
+          onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+          className="filter-input"
+        />
+        <select
+          value={filters.status}
+          onChange={(e) => {
+            setCurrentPage(1)
+            setFilters({ ...filters, status: e.target.value })
+          }}
+          className="filter-select"
+        >
+          <option value="">전체 상태</option>
+          <option value="pending">주문 대기</option>
+          <option value="confirmed">주문 확인</option>
+          <option value="processing">처리 중</option>
+          <option value="shipped">배송 중</option>
+          <option value="delivered">배송 완료</option>
+          <option value="cancelled">취소됨</option>
+          <option value="refunded">환불됨</option>
+        </select>
+      </div>
+
+      {/* 주문 테이블 */}
+      <div className="order-table-container">
+        {loading ? (
+          <div className="loading">로딩 중...</div>
+        ) : error ? (
+          <div className="error">{error}</div>
+        ) : (
+          <table className="orders-table">
+            <thead>
+              <tr>
+                <th>번호</th>
+                <th>주문번호</th>
+                <th>고객명</th>
+                <th>이메일</th>
+                <th>전화번호</th>
+                <th>주소</th>
+                <th>상품수량</th>
+                <th>주문일시</th>
+                <th>배송일</th>
+                <th>결제상태</th>
+                <th>주문상태</th>
+                <th>총 결제금액</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan="11" className="empty-state">
+                    주문 내역이 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                orders.map((order, index) => {
+                  const rowNumber = totalOrders - ((currentPage - 1) * 10 + index)
+
+                  const fullOrderNumber = order.orderNumber || ''
+                  const shortOrderNumber =
+                    fullOrderNumber.length > 10
+                      ? `${fullOrderNumber.slice(0, 8)}...`
+                      : fullOrderNumber
+
+                  return (
+                    <tr key={order._id}>
+                      <td>{rowNumber}</td>
+                      <td title={fullOrderNumber}>{shortOrderNumber}</td>
+                      <td className="order-customer-name">{order.customerName}</td>
+                      <td>{order.customerEmail}</td>
+                      <td>{order.customerPhone}</td>
+                      <td>
+                        {order.shippingAddress
+                          ? `[${order.shippingAddress.postalCode}] ${order.shippingAddress.address}${
+                              order.shippingAddress.detailAddress
+                                ? ` ${order.shippingAddress.detailAddress}`
+                                : ''
+                            }`
+                          : '-'}
+                      </td>
+                      <td>{getTotalItemCount(order)}개</td>
+                      <td>{formatDateTime(order.createdAt)}</td>
+                      <td>
+                        {order.deliveredDate
+                          ? formatDateTime(order.deliveredDate)
+                          : order.shippedDate
+                          ? formatDateTime(order.shippedDate)
+                          : '-'}
+                      </td>
+                      <td>
+                        <span className="status-badge order-payment-badge">
+                          {getPaymentStatusText(order.paymentStatus)}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="order-status-cell">
+                          <span
+                            className={`status-badge order-status-badge status-${order.status}`}
+                          >
+                            {getStatusText(order.status)}
+                          </span>
+                          <select
+                            className="order-status-select"
+                            value={order.status}
+                            onChange={(e) => handleStatusChange(order, e.target.value)}
+                          >
+                            <option value="pending">주문 대기</option>
+                            <option value="confirmed">주문 확인</option>
+                            <option value="processing">처리 중</option>
+                            <option value="shipped">배송 중</option>
+                            <option value="delivered">배송 완료</option>
+                            <option value="cancelled">취소됨</option>
+                            <option value="refunded">환불됨</option>
+                          </select>
+                        </div>
+                      </td>
+                      <td>₩{order.totalAmount.toLocaleString()}</td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* 페이지네이션 */}
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+            className="page-btn page-btn-nav"
+            title="첫 페이지"
+          >
+            ««
+          </button>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className="page-btn page-btn-nav"
+            title="이전 페이지"
+          >
+            ‹
+          </button>
+
+          <div className="page-numbers">
+            {(() => {
+              const pages = []
+              const showPages = []
+
+              showPages.push(1)
+
+              for (
+                let i = Math.max(2, currentPage - 1);
+                i <= Math.min(totalPages - 1, currentPage + 1);
+                i++
+              ) {
+                if (!showPages.includes(i)) {
+                  showPages.push(i)
+                }
+              }
+
+              if (totalPages > 1 && !showPages.includes(totalPages)) {
+                showPages.push(totalPages)
+              }
+
+              showPages.sort((a, b) => a - b)
+
+              let prevPage = 0
+              showPages.forEach((pageNum) => {
+                if (pageNum - prevPage > 1) {
+                  pages.push(
+                    <span key={`ellipsis-${prevPage}`} className="page-ellipsis">
+                      ...
+                    </span>
+                  )
+                }
+                pages.push(
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`page-btn page-number ${
+                      currentPage === pageNum ? 'active' : ''
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )
+                prevPage = pageNum
+              })
+
+              return pages
+            })()}
+          </div>
+
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className="page-btn page-btn-nav"
+            title="다음 페이지"
+          >
+            ›
+          </button>
+          <button
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages}
+            className="page-btn page-btn-nav"
+            title="마지막 페이지"
+          >
+            »»
+          </button>
+        </div>
+      )}
+
+      {/* 페이지 정보 */}
+      {totalOrders > 0 && (
+        <div className="pagination-info">
+          전체 {totalOrders}건 중 {(currentPage - 1) * 10 + 1} -{' '}
+          {Math.min(currentPage * 10, totalOrders)}건 표시
+        </div>
+      )}
+    </div>
+  )
+}
 
 // 상품 목록 컴포넌트
 function ProductManagementView({ onAddProduct, onEditProduct, refreshTrigger }) {
@@ -848,7 +1250,9 @@ function Admin() {
   }
 
   return (
-    <div className="admin-container">
+    <>
+      <Navbar variant="admin" />
+      <div className="admin-container">
       {/* 사이드바 */}
       <aside className="admin-sidebar">
         <div className="sidebar-header" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
@@ -989,6 +1393,9 @@ function Admin() {
           </div>
         )}
 
+        {/* 주문 관리 페이지 */}
+        {activeMenu === 'orders' && <OrderManagementView />}
+
         {/* 상품 관리 페이지 */}
         {activeMenu === 'products' && productViewMode === 'list' && (
           <ProductManagementView
@@ -1017,15 +1424,9 @@ function Admin() {
           />
         )}
 
-        {/* 다른 메뉴 페이지들 */}
-        {activeMenu !== 'dashboard' && activeMenu !== 'products' && (
-          <div className="page-content">
-            <h2>{menuItems.find((item) => item.id === activeMenu)?.label}</h2>
-            <p>이 페이지는 준비 중입니다.</p>
-          </div>
-        )}
       </main>
     </div>
+    </>
   )
 }
 

@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createOrder,
   getUserOrders,
+  getAllOrders,
   getOrderById,
   updateOrderStatus,
   updatePaymentStatus,
@@ -22,6 +23,13 @@ router.post('/', authenticate, createOrder);
  * @access  Private
  */
 router.get('/', authenticate, getUserOrders);
+
+/**
+ * @route   GET /api/orders/admin
+ * @desc    전체 주문 목록 조회 (관리자용)
+ * @access  Private (Admin only)
+ */
+router.get('/admin', authenticate, isAdmin, getAllOrders);
 
 /**
  * @route   GET /api/orders/:id

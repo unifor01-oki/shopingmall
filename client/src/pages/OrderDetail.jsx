@@ -257,6 +257,9 @@ function OrderDetail() {
           <button onClick={() => navigate('/cart')} className="cart-btn">
             장바구니
           </button>
+          <button onClick={() => navigate('/my-orders')} className="orders-btn">
+            내 주문 목록 보기
+          </button>
         </div>
       </div>
     </div>

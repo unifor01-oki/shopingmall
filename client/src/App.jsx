@@ -9,6 +9,7 @@ import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
 import OrderDetail from './pages/OrderDetail'
+import MyOrders from './pages/MyOrders'
 import './App.css'
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/orders/:id" element={<OrderDetail />} />
+                <Route path="/my-orders" element={<MyOrders />} />
               </Routes>
             </>
           }

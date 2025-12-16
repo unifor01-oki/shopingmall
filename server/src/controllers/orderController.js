@@ -172,6 +172,54 @@ exports.getUserOrders = async (req, res) => {
 };
 
 /**
+ * 전체 주문 목록 조회 (관리자용)
+ */
+exports.getAllOrders = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status, search } = req.query;
+
+    const filter = {};
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      filter.$or = [
+        { orderNumber: searchRegex },
+        { customerName: searchRegex },
+        { customerEmail: searchRegex },
+      ];
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const orders = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Order.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / parseInt(limit)),
+      data: orders,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: '전체 주문 목록을 가져오는 중 오류가 발생했습니다.',
+      message: error.message,
+    });
+  }
+};
+
+/**
  * 특정 주문 조회
  */
 exports.getOrderById = async (req, res) => {
