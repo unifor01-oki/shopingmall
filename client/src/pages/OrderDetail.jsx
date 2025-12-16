@@ -232,7 +232,8 @@ function OrderDetail() {
                 <span className="info-value">
                   {order.paymentMethod === 'card' && '카드 결제'}
                   {order.paymentMethod === 'bank_transfer' && '계좌이체'}
-                  {order.paymentMethod === 'virtual_account' && '가상계좌'}
+                  {order.paymentMethod === 'naver_pay' && '네이버페이'}
+                  {order.paymentMethod === 'kakao_pay' && '카카오페이'}
                   {order.paymentMethod === 'phone' && '휴대폰 결제'}
                   {order.paymentMethod === 'point' && '포인트 결제'}
                 </span>

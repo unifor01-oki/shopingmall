@@ -95,8 +95,9 @@ exports.createOrder = async (req, res) => {
     // 주문 생성
     const order = new Order({
       userId,
-      customerName: req.user.name,
-      customerEmail: req.user.email,
+      // req.user에 name/email이 없을 경우를 대비해 배송 정보/빈 문자열로 fallback
+      customerName: req.user?.name || shippingAddress.recipientName,
+      customerEmail: req.user?.email || '',
       customerPhone: shippingAddress.phone,
       shippingAddress,
       items: orderItems,
@@ -128,7 +129,8 @@ exports.createOrder = async (req, res) => {
     console.error('주문 생성 오류:', error);
     res.status(500).json({
       success: false,
-      error: '주문 생성 중 오류가 발생했습니다.',
+      // 프론트에서 에러 원인을 볼 수 있도록 상세 메시지도 포함
+      error: `주문 생성 중 오류가 발생했습니다: ${error.message}`,
       message: error.message,
     });
   }

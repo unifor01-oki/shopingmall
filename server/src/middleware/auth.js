@@ -31,8 +31,10 @@ exports.authenticate = async (req, res, next) => {
     }
 
     // 요청 객체에 사용자 정보 추가
+    // 주문 등에서 사용자 이름/이메일을 사용할 수 있도록 name도 포함
     req.user = {
       id: user._id,
+      name: user.name,
       email: user.email,
       user_type: user.user_type,
     };

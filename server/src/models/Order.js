@@ -159,7 +159,8 @@ const orderSchema = new mongoose.Schema(
         values: [
           'card',              // 카드 결제
           'bank_transfer',     // 계좌이체
-          'virtual_account',   // 가상계좌
+          'naver_pay',         // 네이버페이
+          'kakao_pay',         // 카카오페이
           'phone',             // 휴대폰 결제
           'point',             // 포인트 결제
         ],
@@ -234,8 +235,9 @@ orderSchema.index({ status: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ paymentStatus: 1 });
 
-// 주문번호 자동 생성 (생성 전)
-orderSchema.pre('save', async function (next) {
+// 주문번호 자동 생성 (검증 전에 수행)
+// required 검증에 걸리지 않도록 'validate' 훅에서 orderNumber를 생성
+orderSchema.pre('validate', async function (next) {
   if (!this.orderNumber) {
     // 날짜 기반 주문번호 생성: ORD-YYYYMMDD-HHMMSS-XXXX
     const now = new Date();

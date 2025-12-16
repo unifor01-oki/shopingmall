@@ -1,14 +1,24 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
-import { post } from '../utils/api'
+import { post, put } from '../utils/api'
 import './Checkout.css'
 
 function Checkout() {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
   const { cartItems, getTotalPrice, clearCart } = useCart()
+
+  // 포트원 결제 모듈 초기화
+  useEffect(() => {
+    if (window.IMP) {
+      window.IMP.init('imp47830310')
+      console.log('포트원 결제 모듈이 초기화되었습니다.')
+    } else {
+      console.error('포트원 스크립트가 로드되지 않았습니다.')
+    }
+  }, [])
 
   const [formData, setFormData] = useState({
     // 배송 정보
@@ -67,6 +77,19 @@ function Checkout() {
     }))
   }
 
+  // 결제 방법에 따른 PG사 설정
+  const getPaymentPG = (paymentMethod) => {
+    const pgMap = {
+      card: 'html5_inicis',
+      bank_transfer: 'html5_inicis',
+      naver_pay: 'naverpay',
+      kakao_pay: 'kakaopay',
+      phone: 'danal_tpay',
+      point: 'html5_inicis',
+    }
+    return pgMap[paymentMethod] || 'html5_inicis'
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -81,6 +104,13 @@ function Checkout() {
         !formData.address
       ) {
         setError('배송 정보를 모두 입력해주세요.')
+        setIsSubmitting(false)
+        return
+      }
+
+      // 포트원 모듈 확인
+      if (!window.IMP) {
+        setError('결제 모듈을 불러올 수 없습니다. 페이지를 새로고침해주세요.')
         setIsSubmitting(false)
         return
       }
@@ -104,24 +134,94 @@ function Checkout() {
         notes: formData.notes,
       }
 
-      // 주문 생성
-      const response = await post('/api/orders', orderData)
+      // 주문 생성 (결제 대기 상태)
+      const orderResponse = await post('/api/orders', orderData)
 
-      if (response.success) {
-        // 장바구니 비우기
-        clearCart()
-        
-        // 주문 완료 페이지로 이동 (또는 주문 상세 페이지)
-        navigate(`/orders/${response.data._id}`, {
-          state: { order: response.data },
-        })
-      } else {
-        setError(response.error || '주문 생성에 실패했습니다.')
+      if (!orderResponse.success) {
+        setError(orderResponse.error || '주문 생성에 실패했습니다.')
+        setIsSubmitting(false)
+        return
       }
+
+      const order = orderResponse.data
+      const orderId = order._id
+      const orderNumber = order.orderNumber
+
+      // 결제 방법에 따른 pay_method 설정
+      const getPayMethod = (paymentMethod) => {
+        const methodMap = {
+          card: 'card',
+          bank_transfer: 'trans',
+          naver_pay: 'card',
+          kakao_pay: 'card',
+          phone: 'phone',
+          point: 'card',
+        }
+        return methodMap[paymentMethod] || 'card'
+      }
+
+      // 포트원 결제 요청
+      window.IMP.request_pay(
+        {
+          pg : 'html5_inicis',
+          pay_method: getPayMethod(formData.paymentMethod),
+          merchant_uid: orderNumber, // 주문번호를 merchant_uid로 사용
+          name: cartItems.length === 1
+            ? cartItems[0].productName
+            : `${cartItems[0].productName} 외 ${cartItems.length - 1}개`,
+          amount: totalAmount,
+          buyer_name: formData.recipientName,
+          buyer_tel: formData.phone,
+          buyer_email: user?.email || '',
+          buyer_addr: `${formData.address} ${formData.detailAddress}`.trim(),
+          buyer_postcode: formData.postalCode,
+        },
+        async (rsp) => {
+          // 결제 성공
+          if (rsp.success) {
+            try {
+              // 결제 상태 업데이트
+              const paymentResponse = await put(`/api/orders/${orderId}/payment`, {
+                paymentStatus: 'completed',
+                paymentId: rsp.imp_uid || rsp.merchant_uid,
+              })
+
+              if (paymentResponse.success) {
+                // 장바구니 비우기
+                clearCart()
+
+                // 주문 완료 페이지로 이동
+                navigate(`/orders/${orderId}`, {
+                  state: { order: paymentResponse.data },
+                })
+              } else {
+                setError('결제는 완료되었지만 주문 상태 업데이트에 실패했습니다.')
+                setIsSubmitting(false)
+              }
+            } catch (err) {
+              console.error('결제 상태 업데이트 오류:', err)
+              setError('결제는 완료되었지만 주문 상태 업데이트 중 오류가 발생했습니다.')
+              setIsSubmitting(false)
+            }
+          } else {
+            // 결제 실패
+            setError(rsp.error_msg || '결제에 실패했습니다.')
+            setIsSubmitting(false)
+
+            // 결제 실패 시 주문 상태 업데이트 (선택사항)
+            try {
+              await put(`/api/orders/${orderId}/payment`, {
+                paymentStatus: 'failed',
+              })
+            } catch (err) {
+              console.error('결제 실패 상태 업데이트 오류:', err)
+            }
+          }
+        }
+      )
     } catch (err) {
       console.error('주문 생성 오류:', err)
       setError(err.message || '주문 생성 중 오류가 발생했습니다.')
-    } finally {
       setIsSubmitting(false)
     }
   }
@@ -265,11 +365,21 @@ function Checkout() {
                   <input
                     type="radio"
                     name="paymentMethod"
-                    value="virtual_account"
-                    checked={formData.paymentMethod === 'virtual_account'}
+                    value="naver_pay"
+                    checked={formData.paymentMethod === 'naver_pay'}
                     onChange={handleChange}
                   />
-                  <span>가상계좌</span>
+                  <span>네이버페이</span>
+                </label>
+                <label className="payment-option">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="kakao_pay"
+                    checked={formData.paymentMethod === 'kakao_pay'}
+                    onChange={handleChange}
+                  />
+                  <span>카카오페이</span>
                 </label>
                 <label className="payment-option">
                   <input
