@@ -25,8 +25,7 @@ function Cart() {
   }
 
   const handleCheckout = () => {
-    // 결제 페이지로 이동 (추후 구현)
-    alert('결제 기능은 준비 중입니다.')
+    navigate('/checkout')
   }
 
   if (cartItems.length === 0) {

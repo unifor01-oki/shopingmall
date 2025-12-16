@@ -5,11 +5,13 @@ const router = express.Router();
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const productRoutes = require('./productRoutes');
+const orderRoutes = require('./orderRoutes');
 
 // 라우트 등록
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/products', productRoutes);
+router.use('/orders', orderRoutes);
 
 // 기본 API 라우트
 router.get('/', (req, res) => {
@@ -19,6 +21,7 @@ router.get('/', (req, res) => {
       '/api/auth': '인증 관련 API',
       '/api/users': '사용자 관련 API',
       '/api/products': '상품 관련 API',
+      '/api/orders': '주문 관련 API',
     },
   });
 });
