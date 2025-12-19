@@ -131,12 +131,15 @@ app.get('/', (req, res) => {
 });
 
 // MongoDB 연결 상태 확인 엔드포인트
+// 헬스 체크는 서버가 실행 중인지만 확인 (MongoDB 연결 상태와 무관하게 200 반환)
 app.get('/api/health', (req, res) => {
   const dbStatus = mongoose.connection.readyState;
   const isConnected = dbStatus === 1;
 
-  res.status(isConnected ? 200 : 503).json({
-    success: isConnected,
+  // 서버가 실행 중이면 항상 200 반환 (Cloudtype liveness/readiness probe 통과)
+  res.status(200).json({
+    success: true,
+    server: 'running',
     database: {
       connected: isConnected,
       status: isConnected ? '연결됨' : '연결 안됨',
