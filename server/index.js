@@ -43,7 +43,7 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// MongoDB 연결
+// MongoDB 연결 (비동기로 처리하여 서버 시작을 막지 않음)
 const connectDB = async () => {
   try {
     const options = {
@@ -87,26 +87,27 @@ const connectDB = async () => {
     }, 30000); // 30초마다 확인
   } catch (err) {
     console.error('❌ MongoDB 연결 실패:', err.message);
-    console.error('연결 URI:', MONGODB_URI);
+    console.error('연결 URI:', MONGODB_URI.replace(/\/\/.*@/, '//***:***@'));
     console.error('\n📋 해결 방법:');
     console.error('1. MongoDB 서버가 실행 중인지 확인하세요.');
-    console.error('   - Windows: MongoDB가 서비스로 실행 중인지 확인');
-    console.error('   - 또는 명령 프롬프트에서 "mongod" 실행');
-    console.error('2. MongoDB Compass에서 연결 테스트:');
-    console.error(`   연결 문자열: ${MONGODB_URI}`);
-    console.error('3. .env 파일의 MONGODB_ATLAS_URL이 올바른지 확인하세요.');
+    console.error('2. MongoDB Atlas Network Access에서 IP 허용 확인');
+    console.error('3. 환경 변수 MONGODB_ATLAS_URL이 올바른지 확인하세요.');
     console.error('4. 방화벽 설정을 확인하세요.\n');
     
     // 프로덕션 환경에서도 연결 실패 시 서버는 계속 실행
-    // (Cloudtype에서 재시도할 수 있도록)
-    // 대신 로그에 명확한 에러 메시지 출력
     console.error('⚠️  MongoDB 연결 실패했지만 서버는 계속 실행됩니다.');
     console.error('   환경 변수 MONGODB_ATLAS_URL을 확인해주세요.\n');
+    
+    // 재연결 시도 (5초 후)
+    setTimeout(() => {
+      console.log('🔄 MongoDB 재연결 시도...');
+      connectDB();
+    }, 5000);
   }
 };
 
-// 데이터베이스 연결 시작
-connectDB();
+// 서버 시작 후 MongoDB 연결 시도 (서버 시작을 막지 않음)
+// 데이터베이스 연결은 서버 시작과 독립적으로 처리
 
 // 기본 라우트
 app.get('/', (req, res) => {
@@ -164,13 +165,20 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 서버 시작
+// 서버 시작 (MongoDB 연결과 독립적으로)
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ 서버가 포트 ${PORT}에서 실행 중입니다.`);
   console.log(`📍 API URL: http://localhost:${PORT}`);
   console.log(`📍 클라이언트: http://localhost:5173`);
   console.log(`📍 환경: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📍 MongoDB URI: ${MONGODB_URI ? '설정됨' : '설정 안됨'}`);
+  console.log(`\n🔄 MongoDB 연결을 시작합니다...\n`);
+  
+  // 서버가 시작된 후 MongoDB 연결 시도
+  connectDB().catch((err) => {
+    console.error('MongoDB 초기 연결 실패:', err.message);
+    console.error('서버는 계속 실행되며, MongoDB는 백그라운드에서 재연결을 시도합니다.');
+  });
 });
 
 // 서버 시작 실패 시 에러 처리
