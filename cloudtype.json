@@ -1,0 +1,6 @@
+{
+  "workdir": "server",
+  "start": "npm start",
+  "install": "npm install"
+}
+

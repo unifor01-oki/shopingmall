@@ -1,0 +1,8 @@
+# Cloudtype 배포 설정
+services:
+  shopingmall:
+    workdir: server
+    build:
+      context: server
+    start: npm start
+
