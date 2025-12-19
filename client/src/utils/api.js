@@ -6,11 +6,28 @@ import { getToken, removeToken, removeUser } from './auth'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5003'
 
+// 개발 환경에서 API URL 확인
+if (import.meta.env.DEV) {
+  console.log('API URL:', API_URL)
+}
+
 /**
  * 기본 fetch 래퍼
  */
 async function request(endpoint, options = {}) {
+  // API_URL이 상대 경로이거나 비어있으면 에러
+  if (!API_URL || API_URL.startsWith('/')) {
+    const errorMsg = `API URL이 설정되지 않았습니다. VITE_API_URL 환경 변수를 확인해주세요. 현재 값: ${API_URL}`
+    console.error(errorMsg)
+    throw new Error(errorMsg)
+  }
+  
   const url = `${API_URL}${endpoint}`
+  
+  // 개발 환경에서 요청 URL 확인
+  if (import.meta.env.DEV) {
+    console.log('API 요청 URL:', url)
+  }
   
   // 토큰 가져오기
   const token = getToken()
@@ -51,6 +68,15 @@ async function request(endpoint, options = {}) {
     const contentType = response.headers.get('content-type')
     if (!contentType?.includes('application/json')) {
       const text = await response.text()
+      
+      // HTML 응답인 경우 (보통 잘못된 URL로 인한 것)
+      if (text.trim().startsWith('<!doctype') || text.trim().startsWith('<!DOCTYPE')) {
+        console.error('API 요청이 HTML을 반환했습니다. API URL을 확인해주세요.')
+        console.error('요청 URL:', url)
+        console.error('설정된 API_URL:', API_URL)
+        throw new Error('서버에 연결할 수 없습니다. API URL 설정을 확인해주세요.')
+      }
+      
       throw new Error(text || '알 수 없는 오류가 발생했습니다.')
     }
 
