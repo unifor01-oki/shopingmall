@@ -188,23 +188,18 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 server.on('error', (err) => {
   console.error('❌ 서버 시작 실패:', err);
   if (err.code === 'EADDRINUSE') {
-    console.error(`포트 ${PORT}가 이미 사용 중입니다.`);
-  }
-  // 에러가 발생해도 프로세스를 종료하지 않음 (Cloudtype에서 재시도 가능)
-});
-
-// 포트 충돌 등 서버 시작 에러 처리
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
     console.error(`\n❌ 포트 ${PORT}가 이미 사용 중입니다.`);
     console.error('해결 방법:');
-    console.error(`1. 다른 포트를 사용하려면 .env 파일에서 PORT 값을 변경하세요.`);
+    console.error(`1. 다른 포트를 사용하려면 환경 변수에서 PORT 값을 변경하세요.`);
     console.error(`2. 포트 ${PORT}를 사용 중인 프로세스를 종료하세요:`);
     console.error(`   Windows: netstat -ano | findstr :${PORT}`);
     console.error(`   그 후 taskkill /PID <PID번호> /F\n`);
   } else {
     console.error('서버 시작 중 오류 발생:', err);
   }
-  process.exit(1);
+  // 프로덕션 환경에서는 에러 발생 시 프로세스 종료
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
 });
 
