@@ -15,12 +15,18 @@ const MONGODB_URI =
 // CORS 허용 origin 설정
 // - 개발: 로컬 호스트들
 // - 배포: CLIENT_URL 환경 변수(쉼표로 여러 개 설정 가능)
+// - CLIENT_URL이 없으면 모든 origin 허용 (배포 초기 단계용)
 const allowedOrigins =
   process.env.NODE_ENV === 'production'
-    ? (process.env.CLIENT_URL || '')
-        .split(',')
-        .map((origin) => origin.trim())
-        .filter(Boolean)
+    ? (() => {
+        const clientUrl = process.env.CLIENT_URL || '';
+        const origins = clientUrl
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean);
+        // CLIENT_URL이 설정되지 않았으면 모든 origin 허용 (나중에 제한 가능)
+        return origins.length > 0 ? origins : true;
+      })()
     : ['http://localhost:5173', 'http://localhost:3000'];
 
 // 미들웨어
@@ -91,10 +97,11 @@ const connectDB = async () => {
     console.error('3. .env 파일의 MONGODB_ATLAS_URL이 올바른지 확인하세요.');
     console.error('4. 방화벽 설정을 확인하세요.\n');
     
-    // 개발 환경에서는 연결 실패 시에도 서버는 계속 실행
-    if (process.env.NODE_ENV === 'production') {
-      process.exit(1);
-    }
+    // 프로덕션 환경에서도 연결 실패 시 서버는 계속 실행
+    // (Cloudtype에서 재시도할 수 있도록)
+    // 대신 로그에 명확한 에러 메시지 출력
+    console.error('⚠️  MongoDB 연결 실패했지만 서버는 계속 실행됩니다.');
+    console.error('   환경 변수 MONGODB_ATLAS_URL을 확인해주세요.\n');
   }
 };
 
