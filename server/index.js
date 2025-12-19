@@ -169,6 +169,17 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ 서버가 포트 ${PORT}에서 실행 중입니다.`);
   console.log(`📍 API URL: http://localhost:${PORT}`);
   console.log(`📍 클라이언트: http://localhost:5173`);
+  console.log(`📍 환경: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📍 MongoDB URI: ${MONGODB_URI ? '설정됨' : '설정 안됨'}`);
+});
+
+// 서버 시작 실패 시 에러 처리
+server.on('error', (err) => {
+  console.error('❌ 서버 시작 실패:', err);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`포트 ${PORT}가 이미 사용 중입니다.`);
+  }
+  // 에러가 발생해도 프로세스를 종료하지 않음 (Cloudtype에서 재시도 가능)
 });
 
 // 포트 충돌 등 서버 시작 에러 처리
