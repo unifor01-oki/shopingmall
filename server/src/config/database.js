@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shopingmall';
+const MONGODB_URI = process.env.MONGODB_ATLAS_URL || 'mongodb://localhost:27017/shopingmall';
 
 const connectDB = async () => {
   try {

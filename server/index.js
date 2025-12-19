@@ -8,15 +8,30 @@ const app = express();
 
 // 환경 변수
 const PORT = process.env.PORT || 5003;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shopingmall';
+const MONGODB_URI =
+  process.env.MONGODB_ATLAS_URL ||
+  'mongodb://localhost:27017/shopingmall';
+
+// CORS 허용 origin 설정
+// - 개발: 로컬 호스트들
+// - 배포: CLIENT_URL 환경 변수(쉼표로 여러 개 설정 가능)
+const allowedOrigins =
+  process.env.NODE_ENV === 'production'
+    ? (process.env.CLIENT_URL || '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : ['http://localhost:5173', 'http://localhost:3000'];
 
 // 미들웨어
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }),
+);
 app.use(morgan('dev'));
 // 이미지 업로드를 위한 body 크기 제한 증가 (50MB)
 app.use(express.json({ limit: '50mb' }));
@@ -73,7 +88,7 @@ const connectDB = async () => {
     console.error('   - 또는 명령 프롬프트에서 "mongod" 실행');
     console.error('2. MongoDB Compass에서 연결 테스트:');
     console.error(`   연결 문자열: ${MONGODB_URI}`);
-    console.error('3. .env 파일의 MONGODB_URI가 올바른지 확인하세요.');
+    console.error('3. .env 파일의 MONGODB_ATLAS_URL이 올바른지 확인하세요.');
     console.error('4. 방화벽 설정을 확인하세요.\n');
     
     // 개발 환경에서는 연결 실패 시에도 서버는 계속 실행
